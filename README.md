@@ -20,6 +20,8 @@ What it should do, but hasn't been tested:
 
 * Work on devices other than my Mac.
 
+[pancurses]: https://crates.io/crates/pancurses
+
 ## Demo
 
 ![Demo!](demo.gif)
