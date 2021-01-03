@@ -2,6 +2,7 @@ use std::cmp::{max, min};
 
 use pancurses::{curs_set, endwin, initscr, noecho, Window};
 use pancurses::Input::Character;
+use serde;
 
 use color::ColorPairs;
 use puzzle::{GamePos, Puzzle};
@@ -10,6 +11,7 @@ use crate::puzzle::{Cell, CellState};
 
 mod color;
 mod puzzle;
+mod download;
 
 fn boolchar(b: bool, t: char, f: char) -> char {
     if b {
@@ -95,6 +97,8 @@ fn main() {
             Character('&') => puzzle.toggle_candidate(&cursor.pos, 7),
             Character('*') => puzzle.toggle_candidate(&cursor.pos, 8),
             Character('(') => puzzle.toggle_candidate(&cursor.pos, 9),
+
+            Character('d') => puzzle = download::fetch("nytimes-medium").unwrap(),
 
             Character('x') => puzzle.clear(&cursor.pos),
             _ => {}

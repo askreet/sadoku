@@ -68,6 +68,7 @@ impl Cell {
     }
 }
 
+#[derive(Debug)]
 pub struct Puzzle {
     cells: [CellState; 9 * 9]
 }
