@@ -20,6 +20,10 @@ What it should do, but hasn't been tested:
 
 * Work on devices other than my Mac.
 
+## Demo
+
+![Demo!](demo.gif)
+
 ## Usage
 
 To run locally, have a Rust development environment and run:
