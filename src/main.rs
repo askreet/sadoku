@@ -2,16 +2,17 @@ use std::cmp::{max, min};
 
 use pancurses::{curs_set, endwin, initscr, noecho, Window};
 use pancurses::Input::Character;
-use serde;
 
 use color::ColorPairs;
-use puzzle::{GamePos, Puzzle};
+use pos::GamePos;
+use puzzle::Puzzle;
 
 use crate::puzzle::{Cell, CellState};
 
 mod color;
 mod puzzle;
 mod download;
+mod pos;
 
 fn boolchar(b: bool, t: char, f: char) -> char {
     if b {
@@ -35,12 +36,20 @@ impl PlayerCursor {
     }
 
     fn right(&mut self) { self.pos.col = min(self.pos.col + 1, 8); }
-
     fn left(&mut self) { self.pos.col = max(self.pos.col - 1, 0); }
-
     fn up(&mut self) { self.pos.row = max(self.pos.row - 1, 0); }
-
     fn down(&mut self) { self.pos.row = min(self.pos.row + 1, 8) }
+
+    fn jump<I: Iterator<Item=GamePos>>(&mut self, mut iter: I, puzzle: &Puzzle) {
+        if let Some(new_pos) = iter.find(|pos| matches!(puzzle.state_at(pos), CellState::Pencilmarks(_))) {
+            self.pos = new_pos;
+        }
+    }
+
+    fn jump_right(&mut self, puzzle: &Puzzle) { self.jump(self.pos.iter_right(), puzzle) }
+    fn jump_left(&mut self, puzzle: &Puzzle) { self.jump(self.pos.iter_left(), puzzle) }
+    fn jump_up(&mut self, puzzle: &Puzzle) { self.jump(self.pos.iter_up(), puzzle) }
+    fn jump_down(&mut self, puzzle: &Puzzle) { self.jump(self.pos.iter_down(), puzzle) }
 }
 
 fn main() {
@@ -77,6 +86,11 @@ fn main() {
             Character('j') => cursor.down(),
             Character('k') => cursor.up(),
             Character('l') => cursor.right(),
+
+            Character('H') => cursor.jump_left(&puzzle),
+            Character('J') => cursor.jump_down(&puzzle),
+            Character('K') => cursor.jump_up(&puzzle),
+            Character('L') => cursor.jump_right(&puzzle),
 
             Character('1') => puzzle.set_guess(&cursor.pos, 1),
             Character('2') => puzzle.set_guess(&cursor.pos, 2),
@@ -127,12 +141,15 @@ fn draw_grid(window: &Window) {
 
 fn draw_cell(cell: &Cell, window: &Window, cursor: &PlayerCursor) {
     let color = match (cell.state, cursor.pos == cell.pos, cursor.pos.aligned_with(cell.pos), cell.error) {
+        (CellState::Pencilmarks(_), true, _, _) => ColorPairs::CursorPencilmarksHighlight,
         (_, true, _, false) => ColorPairs::CursorHighlight,
         (_, true, _, true) => ColorPairs::CursorHighlightErr,
         (CellState::Clue(_), _, true, false) => ColorPairs::ClueRowHighlight,
         (CellState::Clue(_), _, true, true) => ColorPairs::ClueRowHighlightErr,
         (CellState::Clue(_), _, false, false) => ColorPairs::Clue,
         (CellState::Clue(_), _, false, true) => ColorPairs::ClueErr,
+        (CellState::Pencilmarks(_), _, true, false) => ColorPairs::PencilmarksRowHighlight,
+        (CellState::Pencilmarks(_), _, false, false) => ColorPairs::Pencilmarks,
         (_, _, true, false) => ColorPairs::RowHighlight,
         (_, _, true, true) => ColorPairs::RowHighlightErr,
         (_, _, false, false) => ColorPairs::Guess,
@@ -148,15 +165,15 @@ fn draw_cell(cell: &Cell, window: &Window, cursor: &PlayerCursor) {
     }
 }
 
-fn win_coords(cell: &Cell) -> (i32, i32) {
-    let y = 1 + (cell.pos.row * 3) + (cell.pos.row / 3);
-    let x = 2 + (cell.pos.col * 4) + ((cell.pos.col / 3) * 2);
+fn win_coords(pos: &GamePos) -> (i32, i32) {
+    let y = 1 + (pos.row * 3) + (pos.row / 3);
+    let x = 2 + (pos.col * 4) + ((pos.col / 3) * 2);
 
     (y, x)
 }
 
 #[test]
-fn test_cell_loc() {
+fn test_win_coords() {
     let tests = [
         (0, 1, 2), // Top-left-most cell.
         (20, 7, 10), // Bottom-right cell of top-left block.
@@ -165,13 +182,13 @@ fn test_cell_loc() {
 
     for (idx, y, x) in tests.iter() {
         let cell = Cell::from_index(*idx, CellState::Guess(0), false);
-        assert_eq!((*y, *x), win_coords(&cell));
+        assert_eq!((*y, *x), win_coords(&cell.pos));
     }
 }
 
 
 fn draw_clue(cell: &Cell, window: &Window, value: u8) {
-    let (y, x) = win_coords(cell);
+    let (y, x) = win_coords(&cell.pos);
 
     // Write the number to the center of the shaded area.
     window.mvaddstr(y, x, "   ");
@@ -180,7 +197,7 @@ fn draw_clue(cell: &Cell, window: &Window, value: u8) {
 }
 
 fn draw_guess(cell: &Cell, window: &Window, value: u8) {
-    let (y, x) = win_coords(cell);
+    let (y, x) = win_coords(&cell.pos);
 
     // Write the number to the center of the shaded area.
     window.mvaddstr(y, x, "   ");
@@ -189,7 +206,7 @@ fn draw_guess(cell: &Cell, window: &Window, value: u8) {
 }
 
 fn draw_pencilmarks(cell: &Cell, window: &Window, values: [bool; 9]) {
-    let (y, x) = win_coords(cell);
+    let (y, x) = win_coords(&cell.pos);
 
     // Write the number to the center of the shaded area.
     // TODO: Ugh.

@@ -15,6 +15,7 @@ What it doesn't do:
 * Generate puzzles. Has one hard-coded puzzle I transcribed from NY Times the day I wrote it.
 * Tell you when you won.
 * Highlight all errors.
+* Handle terminals that don't support full color gracefully.
 
 What it should do, but hasn't been tested:
 
@@ -34,8 +35,11 @@ To run locally, have a Rust development environment and run:
 
 Controls are as follows:
 
-* Move cursor: `hjkl` (Like vim). Clear cell: `x`
-* Insert guess: `1` - `9`
-* Insert pencil marks: Shift + `1` - `9`. Exit: `q`
+* Move cursor: `hjkl` (Like vim).
+* Move cursor to next empty/pencilmarked cell: `HJKL`.
+* Clear cell: `x`.
+* Insert guess: `1` - `9`.
+* Insert pencil marks: Shift + `1` - `9`.
+* Exit: `q`.
 * Download NYTimes puzzle: `d` (warning: this will overwrite any game state)
 

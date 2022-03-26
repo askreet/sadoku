@@ -1,25 +1,4 @@
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub struct GamePos {
-    pub(crate) col: i32,
-    pub(crate) row: i32,
-}
-
-impl GamePos {
-    fn at(row: i32, col: i32) -> Self {
-        GamePos { row, col }
-    }
-
-    fn from_index(idx: i32) -> Self {
-        let row = idx / 9;
-        let col = idx % 9;
-
-        GamePos { row, col }
-    }
-
-    pub(crate) fn aligned_with(&self, other: GamePos) -> bool {
-        other.col == self.col || other.row == self.row
-    }
-}
+use crate::pos::GamePos;
 
 #[derive(Clone, Copy, Debug)]
 pub enum CellState {
@@ -59,9 +38,16 @@ pub struct Cell {
 }
 
 impl Cell {
+    pub fn pos_at_index(idx: i32) -> GamePos {
+        let row = idx / 9;
+        let col = idx % 9;
+
+        GamePos::at(row, col)
+    }
+
     pub fn from_index(idx: i32, state: CellState, error: bool) -> Cell {
         Cell {
-            pos: GamePos::from_index(idx),
+            pos: Self::pos_at_index(idx),
             state,
             error,
         }
@@ -89,20 +75,8 @@ impl Puzzle {
     pub fn is_error(&self, pos: GamePos) -> bool {
         let my_cell = self.state_at(&pos);
 
-        // Scan this row for duplicates.
-        for col in 0..=8 {
-            if col == pos.col {
-                continue; // Don't compare with this cell.
-            }
-
-            let their_cell = self.state_at(&GamePos::at(pos.row, col));
-
-            if my_cell.conflicts_with(their_cell) {
-                return true;
-            }
-        }
-
-        return false;
+        pos.conflict_candidates()
+            .any(|other| self.state_at(&other).conflicts_with(my_cell))
     }
 
     pub fn iter_cells(&self) -> CellIter {
@@ -142,7 +116,7 @@ impl Puzzle {
         }
     }
 
-    fn state_at(&self, pos: &GamePos) -> CellState {
+    pub(crate) fn state_at(&self, pos: &GamePos) -> CellState {
         self.cells[Self::idx_of(pos)]
     }
 
@@ -200,7 +174,7 @@ impl Iterator for CellIter<'_> {
 
         if this_idx <= 80 {
             let cell_state = self.puzzle.cells[this_idx];
-            let cell = Cell::from_index(this_idx as i32, cell_state, self.puzzle.is_error(GamePos::from_index(this_idx as i32)));
+            let cell = Cell::from_index(this_idx as i32, cell_state, self.puzzle.is_error(Cell::pos_at_index(this_idx as i32)));
 
             Some(cell)
         } else {
